@@ -6,6 +6,8 @@
 #include <cppevent_base/byte_buffer.hpp>
 #include <cppevent_base/task.hpp>
 
+#include <string>
+
 namespace cppevent {
 
 constexpr long SOCKET_BUFFER_SIZE = 8000;
@@ -23,13 +25,19 @@ private:
     SOCKET_OP_STATUS m_read_status;
     SOCKET_OP_STATUS m_write_status;
 
-    void attempt_read(std::byte*& dest, long& total, long& size);
-    void attempt_write(const std::byte*& src, long& size);
+    void read_helper(std::byte*& dest, long& total, long& size);
+    void read_str_helper(std::string& result, long& size);
+    void read_line_helper(std::string& result, char& prev, bool& line_ended);
+
+    void write_helper(const std::byte*& src, long& size);
 public:
     socket(int socket_fd, event_loop& loop);
     ~socket();
 
     awaitable_task<long> read(void* dest, long size, bool read_fully);
+    awaitable_task<std::string> read_str(long size, bool read_fully);
+    awaitable_task<std::string> read_line(bool read_fully);
+
     awaitable_task<void> write(const void* src, long size);
     awaitable_task<void> flush();
 };

@@ -11,9 +11,21 @@
 namespace cppevent {
 
 template<long BUFFER_SIZE>
+bool can_read_buffer(io_chunk& chunk, byte_buffer<BUFFER_SIZE>& buffer) {
+    chunk = buffer.get_read_chunk();
+    return chunk.m_size > 0;
+}
+
+template<long BUFFER_SIZE>
+bool can_write_buffer(io_chunk& chunk, byte_buffer<BUFFER_SIZE>& buffer) {
+    chunk = buffer.get_write_chunk();
+    return chunk.m_size > 0;
+}
+
+template<long BUFFER_SIZE>
 inline SOCKET_OP_STATUS recv_to_buffer(int socket_fd, byte_buffer<BUFFER_SIZE>& buffer) {
     io_chunk chunk;
-    while ((chunk = buffer.get_write_chunk()).m_size > 0) {
+    while (can_write_buffer(chunk, buffer)) {
         auto size_read = recv(socket_fd, chunk.m_ptr, chunk.m_size, 0);
         if (size_read > 0) {
             buffer.increment_write_p(size_read);
@@ -31,7 +43,7 @@ inline SOCKET_OP_STATUS recv_to_buffer(int socket_fd, byte_buffer<BUFFER_SIZE>& 
 template<long BUFFER_SIZE>
 inline SOCKET_OP_STATUS send_from_buffer(int socket_fd, byte_buffer<BUFFER_SIZE>& buffer) {
     io_chunk chunk;
-    while ((chunk = buffer.get_read_chunk()).m_size > 0) {
+    while (can_read_buffer(chunk, buffer)) {
         auto size_written = send(socket_fd, chunk.m_ptr, chunk.m_size, 0);
         if (size_written > 0) {
             buffer.increment_read_p(size_written);
