@@ -32,6 +32,7 @@ private:
     void write_helper(const std::byte*& src, long& size);
 public:
     socket(int socket_fd, event_loop& loop);
+    socket(int socket_fd, event_listener* m_listener);
     ~socket();
 
     awaitable_task<long> read(void* dest, long size, bool read_fully);

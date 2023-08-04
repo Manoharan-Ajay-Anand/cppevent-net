@@ -10,7 +10,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <fcntl.h>
 #include <unistd.h>
 
 cppevent::server_socket::server_socket(const std::string& name,

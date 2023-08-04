@@ -16,6 +16,12 @@ cppevent::socket::socket(int socket_fd, event_loop& loop): m_fd(socket_fd) {
     m_write_status = OP_STATUS::SUCCESS;
 }
 
+cppevent::socket::socket(int socket_fd, event_listener* listener): m_fd(socket_fd),
+                                                                   m_listener(listener) {
+    m_read_status = OP_STATUS::SUCCESS;
+    m_write_status = OP_STATUS::SUCCESS;
+}
+
 cppevent::socket::~socket() {
     int status = close(m_fd);
     cppevent::throw_if_error(status, "Failed to close socket fd: ");
@@ -116,7 +122,7 @@ cppevent::awaitable_task<std::string> cppevent::socket::read_line(bool read_full
     while (!line_ended && m_read_status != OP_STATUS::CLOSE) {
         switch (m_read_status) {
             case OP_STATUS::ERROR:
-                throw_errno("socket read_str failed: ");
+                throw_errno("socket read_line failed: ");
             case OP_STATUS::BLOCK:
                 co_await read_awaiter { *m_listener };
             default:

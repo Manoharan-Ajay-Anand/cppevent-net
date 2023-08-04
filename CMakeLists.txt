@@ -1,5 +1,6 @@
 add_library(cppevent-net STATIC
     src/cppevent_net/socket.cpp
+    src/cppevent_net/client_socket.cpp
     src/cppevent_net/server_socket.cpp
     src/cppevent_net/util.cpp
 )
