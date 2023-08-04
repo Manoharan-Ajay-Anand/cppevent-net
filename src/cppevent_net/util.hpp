@@ -5,7 +5,7 @@
 
 #include <cppevent_base/byte_buffer.hpp>
 
-#include <sys/socket.h>
+#include <unistd.h>
 #include <cerrno>
 
 namespace cppevent {
@@ -23,10 +23,10 @@ inline bool can_write_buffer(io_chunk& chunk, byte_buffer<BUFFER_SIZE>& buffer) 
 }
 
 template<long BUFFER_SIZE>
-inline OP_STATUS recv_to_buffer(int socket_fd, byte_buffer<BUFFER_SIZE>& buffer) {
+inline OP_STATUS read_file(int fd, byte_buffer<BUFFER_SIZE>& buffer) {
     io_chunk chunk;
     while (can_write_buffer(chunk, buffer)) {
-        auto size_read = recv(socket_fd, chunk.m_ptr, chunk.m_size, 0);
+        auto size_read = ::read(fd, chunk.m_ptr, chunk.m_size);
         if (size_read > 0) {
             buffer.increment_write_p(size_read);
         } else if (size_read == 0) {
@@ -41,10 +41,10 @@ inline OP_STATUS recv_to_buffer(int socket_fd, byte_buffer<BUFFER_SIZE>& buffer)
 }
 
 template<long BUFFER_SIZE>
-inline OP_STATUS send_from_buffer(int socket_fd, byte_buffer<BUFFER_SIZE>& buffer) {
+inline OP_STATUS write_file(int fd, byte_buffer<BUFFER_SIZE>& buffer) {
     io_chunk chunk;
     while (can_read_buffer(chunk, buffer)) {
-        auto size_written = send(socket_fd, chunk.m_ptr, chunk.m_size, 0);
+        auto size_written = ::write(fd, chunk.m_ptr, chunk.m_size);
         if (size_written > 0) {
             buffer.increment_read_p(size_written);
         } else if (errno == EAGAIN || errno == EWOULDBLOCK) {

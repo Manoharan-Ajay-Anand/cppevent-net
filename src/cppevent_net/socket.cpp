@@ -29,6 +29,30 @@ void cppevent::socket::read_helper(std::byte*& dest, long& total, long& size) {
     size -= transferred;
 }
 
+cppevent::awaitable_task<long> cppevent::socket::read(void* dest, long size, bool read_fully) {
+    std::byte* dest_ptr = static_cast<std::byte*>(dest);
+    long total_size_read = 0;
+
+    read_helper(dest_ptr, total_size_read, size);
+
+    while (size > 0 && m_read_status != OP_STATUS::CLOSE) {
+        switch (m_read_status) {
+            case OP_STATUS::ERROR:
+                throw_errno("socket read failed: ");
+            case OP_STATUS::BLOCK:
+                co_await read_awaiter { *m_listener };
+            default:
+                m_read_status = read_file(m_fd, m_in_buffer);
+                read_helper(dest_ptr, total_size_read, size);
+        }
+    }
+
+    if (m_read_status == OP_STATUS::CLOSE && size > 0 && read_fully) {
+        throw std::runtime_error("socket read failed: socket closed");
+    }
+    co_return total_size_read;
+}
+
 void cppevent::socket::read_str_helper(std::string& result, long& size) {
     io_chunk chunk;
     while (can_read_buffer(chunk, m_in_buffer)) {
@@ -37,6 +61,30 @@ void cppevent::socket::read_str_helper(std::string& result, long& size) {
         size -= size_to_read;
         m_in_buffer.increment_read_p(size_to_read);
     }
+}
+
+cppevent::awaitable_task<std::string> cppevent::socket::read_str(long size, bool read_fully) {
+    std::string result;
+    result.reserve(size);
+
+    read_str_helper(result, size);
+
+    while (size > 0 && m_read_status != OP_STATUS::CLOSE) {
+        switch (m_read_status) {
+            case OP_STATUS::ERROR:
+                throw_errno("socket read_str failed: ");
+            case OP_STATUS::BLOCK:
+                co_await read_awaiter { *m_listener };
+            default:
+                m_read_status = read_file(m_fd, m_in_buffer);
+                read_str_helper(result, size);
+        }
+    }
+
+    if (m_read_status == OP_STATUS::CLOSE && size > 0 && read_fully) {
+        throw std::runtime_error("socket read_str failed: socket closed");
+    }
+    co_return std::move(result);
 }
 
 void cppevent::socket::read_line_helper(std::string& result, char& prev, bool& line_ended) {
@@ -58,60 +106,6 @@ void cppevent::socket::read_line_helper(std::string& result, char& prev, bool& l
     }
 }
 
-void cppevent::socket::write_helper(const std::byte*& src, long& size) {
-    long transferred = m_out_buffer.write(src, size);
-    src += transferred;
-    size -= transferred;
-}
-
-cppevent::awaitable_task<long> cppevent::socket::read(void* dest, long size, bool read_fully) {
-    std::byte* dest_ptr = static_cast<std::byte*>(dest);
-    long total_size_read = 0;
-
-    read_helper(dest_ptr, total_size_read, size);
-
-    while (size > 0 && m_read_status != OP_STATUS::CLOSE) {
-        switch (m_read_status) {
-            case OP_STATUS::ERROR:
-                throw_errno("socket read failed: ");
-            case OP_STATUS::BLOCK:
-                co_await read_awaiter { *m_listener };
-            default:
-                m_read_status = recv_to_buffer(m_fd, m_in_buffer);
-                read_helper(dest_ptr, total_size_read, size);
-        }
-    }
-
-    if (m_read_status == OP_STATUS::CLOSE && size > 0 && read_fully) {
-        throw std::runtime_error("socket read failed: socket closed");
-    }
-    co_return total_size_read;
-}
-
-cppevent::awaitable_task<std::string> cppevent::socket::read_str(long size, bool read_fully) {
-    std::string result;
-    result.reserve(size);
-
-    read_str_helper(result, size);
-
-    while (size > 0 && m_read_status != OP_STATUS::CLOSE) {
-        switch (m_read_status) {
-            case OP_STATUS::ERROR:
-                throw_errno("socket read_str failed: ");
-            case OP_STATUS::BLOCK:
-                co_await read_awaiter { *m_listener };
-            default:
-                m_read_status = recv_to_buffer(m_fd, m_in_buffer);
-                read_str_helper(result, size);
-        }
-    }
-
-    if (m_read_status == OP_STATUS::CLOSE && size > 0 && read_fully) {
-        throw std::runtime_error("socket read_str failed: socket closed");
-    }
-    co_return std::move(result);
-}
-
 cppevent::awaitable_task<std::string> cppevent::socket::read_line(bool read_fully) {
     std::string result;
     char prev = 0;
@@ -126,7 +120,7 @@ cppevent::awaitable_task<std::string> cppevent::socket::read_line(bool read_full
             case OP_STATUS::BLOCK:
                 co_await read_awaiter { *m_listener };
             default:
-                m_read_status = recv_to_buffer(m_fd, m_in_buffer);
+                m_read_status = read_file(m_fd, m_in_buffer);
                 read_line_helper(result, prev, line_ended);
         }
     }
@@ -135,6 +129,12 @@ cppevent::awaitable_task<std::string> cppevent::socket::read_line(bool read_full
         throw std::runtime_error("socket read_line failed: socket closed");
     }
     co_return std::move(result);
+}
+
+void cppevent::socket::write_helper(const std::byte*& src, long& size) {
+    long transferred = m_out_buffer.write(src, size);
+    src += transferred;
+    size -= transferred;
 }
 
 cppevent::awaitable_task<void> cppevent::socket::write(const void* src, long size) {
@@ -150,7 +150,7 @@ cppevent::awaitable_task<void> cppevent::socket::write(const void* src, long siz
             case OP_STATUS::BLOCK:
                 co_await write_awaiter { *m_listener };
             default:
-                m_write_status = send_from_buffer(m_fd, m_out_buffer);
+                m_write_status = write_file(m_fd, m_out_buffer);
                 write_helper(src_ptr, size);
         }
     }
@@ -164,7 +164,7 @@ cppevent::awaitable_task<void> cppevent::socket::flush() {
             case OP_STATUS::BLOCK:
                 co_await write_awaiter { *m_listener };
             default:
-                m_write_status = send_from_buffer(m_fd, m_out_buffer);
+                m_write_status = write_file(m_fd, m_out_buffer);
         }
     }
 }
