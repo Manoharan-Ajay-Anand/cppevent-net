@@ -22,8 +22,8 @@ private:
     event_listener* m_listener;
     byte_buffer<SOCKET_BUFFER_SIZE> m_in_buffer;
     byte_buffer<SOCKET_BUFFER_SIZE> m_out_buffer;
-    SOCKET_OP_STATUS m_read_status;
-    SOCKET_OP_STATUS m_write_status;
+    OP_STATUS m_read_status;
+    OP_STATUS m_write_status;
 
     void read_helper(std::byte*& dest, long& total, long& size);
     void read_str_helper(std::string& result, long& size);

@@ -12,8 +12,8 @@
 
 cppevent::socket::socket(int socket_fd, event_loop& loop): m_fd(socket_fd) {
     m_listener = loop.get_io_listener(m_fd);
-    m_read_status = SOCKET_OP_STATUS::SOCKET_OP_SUCCESS;
-    m_write_status = SOCKET_OP_STATUS::SOCKET_OP_SUCCESS;
+    m_read_status = OP_STATUS::SUCCESS;
+    m_write_status = OP_STATUS::SUCCESS;
 }
 
 cppevent::socket::~socket() {
@@ -70,11 +70,11 @@ cppevent::awaitable_task<long> cppevent::socket::read(void* dest, long size, boo
 
     read_helper(dest_ptr, total_size_read, size);
 
-    while (size > 0 && m_read_status != SOCKET_OP_STATUS::SOCKET_OP_CLOSE) {
+    while (size > 0 && m_read_status != OP_STATUS::CLOSE) {
         switch (m_read_status) {
-            case SOCKET_OP_STATUS::SOCKET_OP_ERROR:
+            case OP_STATUS::ERROR:
                 throw_errno("socket read failed: ");
-            case SOCKET_OP_STATUS::SOCKET_OP_BLOCK:
+            case OP_STATUS::BLOCK:
                 co_await read_awaiter { *m_listener };
             default:
                 m_read_status = recv_to_buffer(m_fd, m_in_buffer);
@@ -82,7 +82,7 @@ cppevent::awaitable_task<long> cppevent::socket::read(void* dest, long size, boo
         }
     }
 
-    if (m_read_status == SOCKET_OP_STATUS::SOCKET_OP_CLOSE && size > 0 && read_fully) {
+    if (m_read_status == OP_STATUS::CLOSE && size > 0 && read_fully) {
         throw std::runtime_error("socket read failed: socket closed");
     }
     co_return total_size_read;
@@ -94,11 +94,11 @@ cppevent::awaitable_task<std::string> cppevent::socket::read_str(long size, bool
 
     read_str_helper(result, size);
 
-    while (size > 0 && m_read_status != SOCKET_OP_STATUS::SOCKET_OP_CLOSE) {
+    while (size > 0 && m_read_status != OP_STATUS::CLOSE) {
         switch (m_read_status) {
-            case SOCKET_OP_STATUS::SOCKET_OP_ERROR:
+            case OP_STATUS::ERROR:
                 throw_errno("socket read_str failed: ");
-            case SOCKET_OP_STATUS::SOCKET_OP_BLOCK:
+            case OP_STATUS::BLOCK:
                 co_await read_awaiter { *m_listener };
             default:
                 m_read_status = recv_to_buffer(m_fd, m_in_buffer);
@@ -106,7 +106,7 @@ cppevent::awaitable_task<std::string> cppevent::socket::read_str(long size, bool
         }
     }
 
-    if (m_read_status == SOCKET_OP_STATUS::SOCKET_OP_CLOSE && size > 0 && read_fully) {
+    if (m_read_status == OP_STATUS::CLOSE && size > 0 && read_fully) {
         throw std::runtime_error("socket read_str failed: socket closed");
     }
     co_return std::move(result);
@@ -119,11 +119,11 @@ cppevent::awaitable_task<std::string> cppevent::socket::read_line(bool read_full
 
     read_line_helper(result, prev, line_ended);
 
-    while (!line_ended && m_read_status != SOCKET_OP_STATUS::SOCKET_OP_CLOSE) {
+    while (!line_ended && m_read_status != OP_STATUS::CLOSE) {
         switch (m_read_status) {
-            case SOCKET_OP_STATUS::SOCKET_OP_ERROR:
+            case OP_STATUS::ERROR:
                 throw_errno("socket read_str failed: ");
-            case SOCKET_OP_STATUS::SOCKET_OP_BLOCK:
+            case OP_STATUS::BLOCK:
                 co_await read_awaiter { *m_listener };
             default:
                 m_read_status = recv_to_buffer(m_fd, m_in_buffer);
@@ -131,7 +131,7 @@ cppevent::awaitable_task<std::string> cppevent::socket::read_line(bool read_full
         }
     }
 
-    if (m_read_status == SOCKET_OP_STATUS::SOCKET_OP_CLOSE && !line_ended && read_fully) {
+    if (m_read_status == OP_STATUS::CLOSE && !line_ended && read_fully) {
         throw std::runtime_error("socket read_line failed: socket closed");
     }
     co_return std::move(result);
@@ -145,9 +145,9 @@ cppevent::awaitable_task<void> cppevent::socket::write(const void* src, long siz
 
     while (size > 0) {
         switch (m_write_status) {
-            case SOCKET_OP_STATUS::SOCKET_OP_ERROR:
+            case OP_STATUS::ERROR:
                 throw_errno("socket write failed: ");
-            case SOCKET_OP_STATUS::SOCKET_OP_BLOCK:
+            case OP_STATUS::BLOCK:
                 co_await write_awaiter { *m_listener };
             default:
                 m_write_status = send_from_buffer(m_fd, m_out_buffer);
@@ -159,9 +159,9 @@ cppevent::awaitable_task<void> cppevent::socket::write(const void* src, long siz
 cppevent::awaitable_task<void> cppevent::socket::flush() {
     while (m_out_buffer.available() > 0) {
         switch (m_write_status) {
-            case SOCKET_OP_STATUS::SOCKET_OP_ERROR:
+            case OP_STATUS::ERROR:
                 throw_errno("socket flush failed: ");
-            case SOCKET_OP_STATUS::SOCKET_OP_BLOCK:
+            case OP_STATUS::BLOCK:
                 co_await write_awaiter { *m_listener };
             default:
                 m_write_status = send_from_buffer(m_fd, m_out_buffer);
