@@ -59,40 +59,6 @@ cppevent::awaitable_task<long> cppevent::socket::read(void* dest, long size, boo
     co_return total_size_read;
 }
 
-void cppevent::socket::read_str_helper(std::string& result, long& size) {
-    io_chunk chunk;
-    while (can_read_buffer(chunk, m_in_buffer)) {
-        long size_to_read = std::min(size, chunk.m_size);
-        result.append(reinterpret_cast<char*>(chunk.m_ptr), size_to_read);
-        size -= size_to_read;
-        m_in_buffer.increment_read_p(size_to_read);
-    }
-}
-
-cppevent::awaitable_task<std::string> cppevent::socket::read_str(long size, bool read_fully) {
-    std::string result;
-    result.reserve(size);
-
-    read_str_helper(result, size);
-
-    while (size > 0 && m_read_status != OP_STATUS::CLOSE) {
-        switch (m_read_status) {
-            case OP_STATUS::ERROR:
-                throw_errno("socket read_str failed: ");
-            case OP_STATUS::BLOCK:
-                co_await read_awaiter { *m_listener };
-            default:
-                m_read_status = read_file(m_fd, m_in_buffer);
-                read_str_helper(result, size);
-        }
-    }
-
-    if (m_read_status == OP_STATUS::CLOSE && size > 0 && read_fully) {
-        throw std::runtime_error("socket read_str failed: socket closed");
-    }
-    co_return std::move(result);
-}
-
 void cppevent::socket::read_line_helper(std::string& result, char& prev, bool& line_ended) {
     io_chunk chunk;
     while (can_read_buffer(chunk, m_in_buffer)) {

@@ -26,7 +26,6 @@ private:
     OP_STATUS m_write_status;
 
     void read_helper(std::byte*& dest, long& total, long& size);
-    void read_str_helper(std::string& result, long& size);
     void read_line_helper(std::string& result, char& prev, bool& line_ended);
 
     void write_helper(const std::byte*& src, long& size);
@@ -36,7 +35,6 @@ public:
     ~socket();
 
     awaitable_task<long> read(void* dest, long size, bool read_fully);
-    awaitable_task<std::string> read_str(long size, bool read_fully);
     awaitable_task<std::string> read_line(bool read_fully);
 
     awaitable_task<void> write(const void* src, long size);
