@@ -1,8 +1,8 @@
 #ifndef CPPEVENT_NET_SERVER_SOCKET_HPP
 #define CPPEVENT_NET_SERVER_SOCKET_HPP
 
-#include <string>
 #include <memory>
+#include <string>
 
 #include <cppevent_base/task.hpp>
 
@@ -20,6 +20,7 @@ private:
     int m_fd;
     event_listener* m_listener;
 public:
+    server_socket(const char* name, const char* service, event_loop& loop);
     server_socket(const std::string& name, const std::string& service, event_loop& loop);
     ~server_socket();
 

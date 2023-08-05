@@ -12,8 +12,8 @@
 #include <netdb.h>
 #include <unistd.h>
 
-cppevent::server_socket::server_socket(const std::string& name,
-                                       const std::string& service,
+cppevent::server_socket::server_socket(const char* name,
+                                       const char* service,
                                        event_loop& loop): m_loop(loop) {
     addrinfo hints {};
     addrinfo* res;
@@ -21,11 +21,7 @@ cppevent::server_socket::server_socket(const std::string& name,
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    const char* name_ptr = NULL;
-    if (!name.empty()) {
-        name_ptr = name.c_str();
-    }
-    int status = ::getaddrinfo(name_ptr, service.c_str(), &hints, &res);
+    int status = ::getaddrinfo(name, service, &hints, &res);
     if (status != 0) {
         throw std::runtime_error(std::string("getaddrinfo failed: ").append(::gai_strerror(status)));
     }
@@ -44,6 +40,13 @@ cppevent::server_socket::server_socket(const std::string& name,
     m_listener = loop.get_io_listener(m_fd);
 
     ::freeaddrinfo(res);
+}
+
+cppevent::server_socket::server_socket(const std::string& name,
+                                       const std::string& service,
+                                       event_loop& loop): server_socket(name.c_str(),
+                                                                        service.c_str(),
+                                                                        loop) {
 }
 
 cppevent::server_socket::~server_socket() {

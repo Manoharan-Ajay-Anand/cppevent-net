@@ -14,18 +14,26 @@
 #include <cerrno>
 #include <stdexcept>
 
-cppevent::client_socket::client_socket(const std::string& name,
-                                       const std::string& service,
+cppevent::client_socket::client_socket(const char* name,
+                                       const char* service,
                                        event_loop& loop): m_loop(loop) {
     addrinfo hints {};
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    int status = ::getaddrinfo(name.c_str(), service.c_str(), &hints, &m_res);
+    int status = ::getaddrinfo(name, service, &hints, &m_res);
     if (status != 0) {
-        throw std::runtime_error(std::string("getaddrinfo failed: ").append(::gai_strerror(status)));
+        throw std::runtime_error(
+                std::string("getaddrinfo failed: ").append(::gai_strerror(status)));
     }                                   
+}
+
+cppevent::client_socket::client_socket(const std::string& name,
+                                       const std::string& service,
+                                       event_loop& loop): client_socket(name.c_str(),
+                                                                        service.c_str(),
+                                                                        loop) {
 }
 
 cppevent::client_socket::~client_socket() {
