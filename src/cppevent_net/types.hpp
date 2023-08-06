@@ -10,6 +10,8 @@ enum class OP_STATUS {
     ERROR
 };
 
+constexpr long SOCKET_BUFFER_SIZE = 8000;
+
 }
 
 #endif
