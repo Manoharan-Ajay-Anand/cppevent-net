@@ -51,22 +51,37 @@ long cppevent::socket_read_awaiter::await_resume() {
     throw std::runtime_error("socket read failed: socket closed");
 }
 
+struct line_info {
+    char prev;
+    bool line_ended;
+    long append_size;
+    long increment_size;
+};
+
+line_info get_line_info(const cppevent::io_chunk chunk, char prev) {
+    long append_size = 0;
+    for (long i = 0; i < chunk.m_size; ++i) {
+        char c = *(reinterpret_cast<char*>(chunk.m_ptr + i));
+        bool is_line_feed = c == '\n';
+        if (is_line_feed || prev == '\r') {
+            return { prev, true, append_size, i + is_line_feed };
+        }
+        prev = c;
+        if (c != '\r') {
+            ++append_size;
+        }
+    }
+    return { prev, false, append_size, chunk.m_size };
+}
+
 void cppevent::socket_read_line_awaiter::attempt_read() {
     io_chunk chunk;
-    while (can_read_buffer(chunk, m_buffer)) {
-        for (long i = 0; i < chunk.m_size; ++i) {
-            char c = *(reinterpret_cast<char*>(chunk.m_ptr + i));
-            bool is_line_feed = c == '\n';
-            if (is_line_feed || m_prev == '\r') {
-                m_line_ended = true;
-                return m_buffer.increment_read_p(i + is_line_feed);
-            }
-            m_prev = c;
-            if (c != '\r') {
-                m_result += c;
-            }
-        }
-        m_buffer.increment_read_p(chunk.m_size);
+    while (!m_line_ended && can_read_buffer(chunk, m_buffer)) {
+        line_info info = get_line_info(chunk, m_prev);
+        m_result.append(reinterpret_cast<char*>(chunk.m_ptr), info.append_size);
+        m_buffer.increment_read_p(info.increment_size);
+        m_line_ended = info.line_ended;
+        m_prev = info.prev;
     }
 }
 
