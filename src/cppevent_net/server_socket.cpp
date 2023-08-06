@@ -15,23 +15,15 @@
 cppevent::server_socket::server_socket(const char* name,
                                        const char* service,
                                        event_loop& loop): m_loop(loop) {
-    addrinfo hints {};
     addrinfo* res;
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    int status = ::getaddrinfo(name, service, &hints, &res);
-    if (status != 0) {
-        throw std::runtime_error(std::string("getaddrinfo failed: ").append(::gai_strerror(status)));
-    }
+    get_addrinfo(name, service, &res);
 
     m_fd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     throw_if_error(m_fd, "server_socket failed to create socket: ");
 
     set_non_blocking(m_fd);
 
-    status = ::bind(m_fd, res->ai_addr, res->ai_addrlen);
+    int status = ::bind(m_fd, res->ai_addr, res->ai_addrlen);
     throw_if_error(status, "server_socket bind failed: ");
 
     status = ::listen(m_fd, 5);
@@ -68,7 +60,7 @@ cppevent::awaitable_task<std::unique_ptr<cppevent::socket>> cppevent::server_soc
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             co_await read_awaiter { *m_listener };
         } else {
-            throw_errno("server_socket failed to accept: ");
+            throw_error("server_socket failed to accept: ");
         }
     }
 }

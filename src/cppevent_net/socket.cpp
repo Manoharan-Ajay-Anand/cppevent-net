@@ -24,7 +24,7 @@ cppevent::socket::socket(int socket_fd, event_listener* listener): m_fd(socket_f
 
 cppevent::socket::~socket() {
     int status = close(m_fd);
-    cppevent::throw_if_error(status, "Failed to close socket fd: ");
+    throw_if_error(status, "Failed to close socket fd: ");
     m_listener->detach();
 }
 
@@ -44,7 +44,7 @@ cppevent::awaitable_task<long> cppevent::socket::read(void* dest, long size, boo
     while (size > 0 && m_read_status != OP_STATUS::CLOSE) {
         switch (m_read_status) {
             case OP_STATUS::ERROR:
-                throw_errno("socket read failed: ");
+                throw_error("socket read failed: ");
             case OP_STATUS::BLOCK:
                 co_await read_awaiter { *m_listener };
             default:
@@ -88,7 +88,7 @@ cppevent::awaitable_task<std::string> cppevent::socket::read_line(bool read_full
     while (!line_ended && m_read_status != OP_STATUS::CLOSE) {
         switch (m_read_status) {
             case OP_STATUS::ERROR:
-                throw_errno("socket read_line failed: ");
+                throw_error("socket read_line failed: ");
             case OP_STATUS::BLOCK:
                 co_await read_awaiter { *m_listener };
             default:
@@ -118,7 +118,7 @@ cppevent::awaitable_task<void> cppevent::socket::write(const void* src, long siz
     while (size > 0) {
         switch (m_write_status) {
             case OP_STATUS::ERROR:
-                throw_errno("socket write failed: ");
+                throw_error("socket write failed: ");
             case OP_STATUS::BLOCK:
                 co_await write_awaiter { *m_listener };
             default:
@@ -132,7 +132,7 @@ cppevent::awaitable_task<void> cppevent::socket::flush() {
     while (m_out_buffer.available() > 0) {
         switch (m_write_status) {
             case OP_STATUS::ERROR:
-                throw_errno("socket flush failed: ");
+                throw_error("socket flush failed: ");
             case OP_STATUS::BLOCK:
                 co_await write_awaiter { *m_listener };
             default:

@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <cerrno>
 
+struct addrinfo;
+
 namespace cppevent {
 
 template<long BUFFER_SIZE>
@@ -57,6 +59,8 @@ inline OP_STATUS write_file(int fd, byte_buffer<BUFFER_SIZE>& buffer) {
 }
 
 void set_non_blocking(int fd);
+
+void get_addrinfo(const char* name, const char* service, addrinfo** res);
 
 }
 

@@ -17,16 +17,7 @@
 cppevent::client_socket::client_socket(const char* name,
                                        const char* service,
                                        event_loop& loop): m_loop(loop) {
-    addrinfo hints {};
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    int status = ::getaddrinfo(name, service, &hints, &m_res);
-    if (status != 0) {
-        throw std::runtime_error(
-                std::string("getaddrinfo failed: ").append(::gai_strerror(status)));
-    }                                   
+    get_addrinfo(name, service, &m_res);                                   
 }
 
 cppevent::client_socket::client_socket(const std::string& name,
@@ -49,11 +40,10 @@ cppevent::awaitable_task<std::unique_ptr<cppevent::socket>> cppevent::client_soc
     event_listener* listener = m_loop.get_io_listener(fd);
 
     int status = ::connect(fd, m_res->ai_addr, m_res->ai_addrlen);
-    std::string prefix("client_socket failed to connect: ");
 
     if (status < 0) {
         if (errno != EAGAIN && errno != EINPROGRESS) {
-            throw_errno(prefix);
+            throw_error("client_socket failed to connect: ");
         }
         co_await write_awaiter { *listener };
 
@@ -62,7 +52,7 @@ cppevent::awaitable_task<std::unique_ptr<cppevent::socket>> cppevent::client_soc
         status = ::getsockopt(fd, SOL_SOCKET, SO_ERROR, &val, &len);
 
         if (val != 0) {
-            throw std::runtime_error(prefix.append(strerror(val)));
+            throw_error("client_socket failed to connect: ");
         }
     }
 
