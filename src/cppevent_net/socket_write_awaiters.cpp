@@ -5,68 +5,62 @@
 #include <cppevent_base/event_listener.hpp>
 #include <cppevent_base/util.hpp>
 
-void cppevent::socket_write_awaiter::attempt_write() {
-    long transferred = m_buffer.write(m_src, m_size);
-    m_size -= transferred;
-    m_src += transferred;
-}
-
-void cppevent::socket_write_awaiter::write_loop() {
-    while (m_size > 0 && m_status == OP_STATUS::SUCCESS) {
+bool cppevent::socket_writable_awaiter::write_available() {
+    if (m_status == OP_STATUS::SUCCESS && m_buffer.capacity() == 0) {
         m_status = write_file(m_fd, m_buffer);
-        attempt_write();
     }
+    m_chunk = m_buffer.get_write_chunk();
+    return !(m_status == OP_STATUS::BLOCK && m_chunk.m_size == 0);
 }
 
-void cppevent::socket_write_awaiter::on_write_available(std::coroutine_handle<> handle) {
-    m_status = OP_STATUS::SUCCESS;
-    write_loop();
-    if (m_size > 0 && m_status == OP_STATUS::BLOCK) {
-        return m_listener.set_write_handler([this, handle]() {
-            on_write_available(handle);
-        });
-    }
-    handle.resume();
+bool cppevent::socket_writable_awaiter::await_ready() {
+    return write_available();
 }
 
-bool cppevent::socket_write_awaiter::await_ready() {
-    attempt_write();
-    write_loop();
-    return !(m_size > 0 && m_status == OP_STATUS::BLOCK);
-}
-
-void cppevent::socket_write_awaiter::await_suspend(std::coroutine_handle<> handle) {
+void cppevent::socket_writable_awaiter::set_write_handler(std::coroutine_handle<> handle) {
     m_listener.set_write_handler([this, handle]() {
-        on_write_available(handle);
+        m_status = write_file(m_fd, m_buffer);
+        if (write_available()) {
+            return handle.resume();
+        }
+        set_write_handler(handle);
     });
 }
 
-void cppevent::socket_write_awaiter::await_resume() {
-    if (m_size == 0) {
-        return;
-    }
-    throw_error("socket write failed: ");
+void cppevent::socket_writable_awaiter::await_suspend(std::coroutine_handle<> handle) {
+    set_write_handler(handle);
 }
 
-void cppevent::socket_flush_awaiter::on_write_available(std::coroutine_handle<> handle) {
-    m_status = write_file(m_fd, m_buffer);
-    if (m_buffer.available() > 0 && m_status == OP_STATUS::BLOCK) {
-        return m_listener.set_write_handler([this, handle]() {
-            on_write_available(handle);
-        });
+cppevent::io_chunk cppevent::socket_writable_awaiter::await_resume() {
+    if (m_status == OP_STATUS::ERROR) {
+        throw_error("socket read failed: ");
     }
-    handle.resume();
+    return m_chunk;
+}
+
+bool cppevent::socket_flush_awaiter::flushed() {
+    if (m_status == OP_STATUS::SUCCESS && m_buffer.available() > 0) {
+        m_status = write_file(m_fd, m_buffer);
+    }
+    return !(m_status == OP_STATUS::BLOCK && m_buffer.available() > 0);
 }
 
 bool cppevent::socket_flush_awaiter::await_ready() {
-    m_status = write_file(m_fd, m_buffer);
-    return !(m_buffer.available() > 0 && m_status == OP_STATUS::BLOCK);
+    return flushed();
+}
+
+void cppevent::socket_flush_awaiter::set_flush_handler(std::coroutine_handle<> handle) {
+    m_listener.set_write_handler([this, handle]() {
+        m_status = write_file(m_fd, m_buffer);
+        if (flushed()) {
+            return handle.resume();
+        }
+        set_flush_handler(handle);
+    });
 }
 
 void cppevent::socket_flush_awaiter::await_suspend(std::coroutine_handle<> handle) {
-    m_listener.set_write_handler([this, handle]() {
-        on_write_available(handle);
-    });
+    set_flush_handler(handle);
 }
 
 void cppevent::socket_flush_awaiter::await_resume() {

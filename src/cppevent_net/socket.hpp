@@ -6,6 +6,7 @@
 #include "socket_write_awaiters.hpp"
 
 #include <cppevent_base/byte_buffer.hpp>
+#include <cppevent_base/task.hpp>
 
 #include <string>
 
@@ -29,10 +30,16 @@ public:
     socket(int socket_fd, event_listener* m_listener);
     ~socket();
 
-    socket_read_awaiter read(void* dest, long size, bool read_fully);
-    socket_read_line_awaiter read_line(bool read_fully);
+    socket_readable_awaiter get_readable();
+    void advance_read(long size);
 
-    socket_write_awaiter write(const void* src, long size);
+    awaitable_task<long> read(void* dest, long size, bool read_fully);
+    awaitable_task<std::string> read_line(bool read_fully);
+
+    socket_writable_awaiter get_writable();
+    void advance_write(long size);
+
+    awaitable_task<void> write(const void* src, long size);
     socket_flush_awaiter flush();
 };
 

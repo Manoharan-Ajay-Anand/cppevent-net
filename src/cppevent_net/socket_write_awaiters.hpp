@@ -12,22 +12,19 @@ namespace cppevent {
 
 class event_listener;
 
-struct socket_write_awaiter {
+struct socket_writable_awaiter {
     const int m_fd;
     OP_STATUS& m_status;
     event_listener& m_listener;
     byte_buffer<SOCKET_BUFFER_SIZE>& m_buffer;
-    
-    const std::byte* m_src;
-    long m_size;
+    io_chunk m_chunk;
 
-    void attempt_write();
-    void write_loop();
-    void on_write_available(std::coroutine_handle<> handle);
+    bool write_available();
+    void set_write_handler(std::coroutine_handle<> handle);
 
     bool await_ready();
     void await_suspend(std::coroutine_handle<> handle);
-    void await_resume();
+    io_chunk await_resume();
 };
 
 struct socket_flush_awaiter {
@@ -36,7 +33,8 @@ struct socket_flush_awaiter {
     event_listener& m_listener;
     byte_buffer<SOCKET_BUFFER_SIZE>& m_buffer;
     
-    void on_write_available(std::coroutine_handle<> handle);
+    bool flushed();
+    void set_flush_handler(std::coroutine_handle<> handle);
 
     bool await_ready();
     void await_suspend(std::coroutine_handle<> handle);
