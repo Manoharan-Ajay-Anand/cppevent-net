@@ -82,9 +82,27 @@ cppevent::awaitable_task<std::string> cppevent::socket::read_line(bool read_full
         advance_read(i);
     }
     if (read_fully && !line_ended) {
-        throw std::runtime_error("socket read failed: socket closed");
+        throw std::runtime_error("socket read_line failed: socket closed");
     }
     co_return std::move(result);
+}
+
+cppevent::awaitable_task<long> cppevent::socket::skip(long size, bool skip_fully) {
+    long total = 0;
+    while (size > 0) {
+        io_chunk chunk = co_await get_readable();
+        if (chunk.m_size == 0) {
+            break;
+        }
+        long to_skip = std::min(size, chunk.m_size);
+        size -= to_skip;
+        total += to_skip;
+        advance_read(to_skip);
+    }
+    if (skip_fully && size > 0) {
+        throw std::runtime_error("socket skip failed: socket closed");
+    }
+    co_return total;
 }
 
 cppevent::socket_writable_awaiter cppevent::socket::get_writable() {

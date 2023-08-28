@@ -35,6 +35,7 @@ public:
 
     awaitable_task<long> read(void* dest, long size, bool read_fully);
     awaitable_task<std::string> read_line(bool read_fully);
+    awaitable_task<long> skip(long size, bool skip_fully);
 
     socket_writable_awaiter get_writable();
     void advance_write(long size);
