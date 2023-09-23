@@ -6,14 +6,14 @@
 #include <cppevent_base/util.hpp>
 
 bool cppevent::socket_readable_awaiter::read_available() {
-    if (m_status == OP_STATUS::SUCCESS && m_buffer.available() == 0) {
-        m_status = read_file(m_fd, m_buffer);
-    }
     m_chunk = m_buffer.get_read_chunk();
     return !(m_status == OP_STATUS::BLOCK && m_chunk.m_size == 0);
 }
 
 bool cppevent::socket_readable_awaiter::await_ready() {
+    if (m_status == OP_STATUS::SUCCESS && m_buffer.available() == 0) {
+        m_status = read_file(m_fd, m_buffer);
+    }
     return read_available();
 }
 

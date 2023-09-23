@@ -6,14 +6,14 @@
 #include <cppevent_base/util.hpp>
 
 bool cppevent::socket_writable_awaiter::write_available() {
-    if (m_status == OP_STATUS::SUCCESS && m_buffer.capacity() == 0) {
-        m_status = write_file(m_fd, m_buffer);
-    }
     m_chunk = m_buffer.get_write_chunk();
     return !(m_status == OP_STATUS::BLOCK && m_chunk.m_size == 0);
 }
 
 bool cppevent::socket_writable_awaiter::await_ready() {
+    if (m_status == OP_STATUS::SUCCESS && m_buffer.capacity() == 0) {
+        m_status = write_file(m_fd, m_buffer);
+    }
     return write_available();
 }
 
@@ -39,13 +39,13 @@ cppevent::io_chunk cppevent::socket_writable_awaiter::await_resume() {
 }
 
 bool cppevent::socket_flush_awaiter::flushed() {
-    if (m_status == OP_STATUS::SUCCESS && m_buffer.available() > 0) {
-        m_status = write_file(m_fd, m_buffer);
-    }
     return !(m_status == OP_STATUS::BLOCK && m_buffer.available() > 0);
 }
 
 bool cppevent::socket_flush_awaiter::await_ready() {
+    if (m_status == OP_STATUS::SUCCESS && m_buffer.available() > 0) {
+        m_status = write_file(m_fd, m_buffer);
+    }
     return flushed();
 }
 
