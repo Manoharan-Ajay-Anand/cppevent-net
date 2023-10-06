@@ -4,7 +4,7 @@
 #include "util.hpp"
 
 #include <cppevent_base/event_loop.hpp>
-#include <cppevent_base/event_listener.hpp>
+#include <cppevent_base/io_listener.hpp>
 #include <cppevent_base/util.hpp>
 
 #include <sys/types.h>
@@ -20,8 +20,6 @@ cppevent::server_socket::server_socket(const char* name,
 
     m_fd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     throw_if_error(m_fd, "server_socket failed to create socket: ");
-
-    set_non_blocking(m_fd);
 
     int status = ::bind(m_fd, res->ai_addr, res->ai_addrlen);
     throw_if_error(status, "server_socket bind failed: ");
@@ -44,23 +42,17 @@ cppevent::server_socket::server_socket(const std::string& name,
 cppevent::server_socket::~server_socket() {
     int status = ::close(m_fd);
     throw_if_error(status, "server_socket close failed: ");
-    m_listener->detach();
 }
 
 cppevent::awaitable_task<std::unique_ptr<cppevent::socket>> cppevent::server_socket::accept() {
     sockaddr_storage client_addr {};
     socklen_t client_addr_len = 0;
 
-    while (true) {
-        int socket_fd = ::accept(m_fd, reinterpret_cast<sockaddr*>(&client_addr), &client_addr_len);
-        if (socket_fd != -1) {
-            set_non_blocking(socket_fd);
-            co_return std::make_unique<socket>(socket_fd, m_loop);
-        }
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            co_await read_awaiter { *m_listener };
-        } else {
-            throw_error("server_socket failed to accept: ");
-        }
+    e_status status = co_await m_listener->on_accept(reinterpret_cast<sockaddr*>(&client_addr),
+                                                     &client_addr_len);
+    
+    if (status < 0) {
+        throw_error("server_socket accept failed: ", 0 - status);
     }
+    co_return std::make_unique<socket>(status, m_loop);
 }

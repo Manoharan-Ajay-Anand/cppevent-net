@@ -6,7 +6,7 @@
 
 #include <cppevent_base/task.hpp>
 
-struct addrinfo;
+#include <netdb.h>
 
 namespace cppevent {
 

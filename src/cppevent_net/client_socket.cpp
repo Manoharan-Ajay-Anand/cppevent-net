@@ -5,11 +5,10 @@
 
 #include <cppevent_base/util.hpp>
 #include <cppevent_base/event_loop.hpp>
-#include <cppevent_base/event_listener.hpp>
+#include <cppevent_base/io_listener.hpp>
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netdb.h>
 
 #include <cerrno>
 #include <stdexcept>
@@ -34,27 +33,14 @@ cppevent::client_socket::~client_socket() {
 cppevent::awaitable_task<std::unique_ptr<cppevent::socket>> cppevent::client_socket::connect() {
     int fd = ::socket(m_res->ai_family, m_res->ai_socktype, m_res->ai_protocol);
     throw_if_error(fd, "client_socket failed to create socket: ");
+    
+    auto read_listener = m_loop.get_io_listener(fd);
+    auto write_listener = m_loop.get_io_listener(fd);
 
-    set_non_blocking(fd);
-
-    event_listener* listener = m_loop.get_io_listener(fd);
-
-    int status = ::connect(fd, m_res->ai_addr, m_res->ai_addrlen);
-
+    e_status status = co_await write_listener->on_connect(m_res->ai_addr, m_res->ai_addrlen);
     if (status < 0) {
-        if (errno != EAGAIN && errno != EINPROGRESS) {
-            throw_error("client_socket failed to connect: ");
-        }
-        co_await write_awaiter { *listener };
-
-        int val;
-        socklen_t len = sizeof(val);
-        status = ::getsockopt(fd, SOL_SOCKET, SO_ERROR, &val, &len);
-
-        if (val != 0) {
-            throw_error("client_socket failed to connect: ");
-        }
+        throw_error("client_socket failed to connect: ", 0 - status);
     }
 
-    co_return std::make_unique<socket>(fd, listener);
+    co_return std::make_unique<socket>(fd, std::move(read_listener), std::move(write_listener));
 }

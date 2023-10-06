@@ -82,8 +82,6 @@ inline OP_STATUS write_file(int fd, byte_buffer<BUFFER_SIZE>& buffer) {
     return OP_STATUS::SUCCESS;
 }
 
-void set_non_blocking(int fd);
-
 void get_addrinfo(const char* name, const char* service, addrinfo** res);
 
 }

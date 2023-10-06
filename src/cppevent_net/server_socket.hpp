@@ -8,7 +8,7 @@
 
 namespace cppevent {
 
-class event_listener;
+class io_listener;
 
 class event_loop;
 
@@ -18,7 +18,7 @@ class server_socket {
 private:
     event_loop& m_loop;
     int m_fd;
-    event_listener* m_listener;
+    std::unique_ptr<io_listener> m_listener;
 public:
     server_socket(const char* name, const char* service, event_loop& loop);
     server_socket(const std::string& name, const std::string& service, event_loop& loop);
