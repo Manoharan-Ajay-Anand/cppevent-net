@@ -1,12 +1,8 @@
 #include "socket.hpp"
 
-#include "util.hpp"
-
 #include <cppevent_base/event_loop.hpp>
 #include <cppevent_base/io_listener.hpp>
 #include <cppevent_base/util.hpp>
-
-#include <unistd.h>
 
 #include <algorithm>
 #include <stdexcept>

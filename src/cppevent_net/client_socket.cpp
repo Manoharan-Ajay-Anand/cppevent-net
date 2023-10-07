@@ -16,7 +16,7 @@
 cppevent::client_socket::client_socket(const char* name,
                                        const char* service,
                                        event_loop& loop): m_loop(loop) {
-    get_addrinfo(name, service, &m_res);                                   
+    get_addrinfo(name, service, &m_res, false);                                   
 }
 
 cppevent::client_socket::client_socket(const std::string& name,

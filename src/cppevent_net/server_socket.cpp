@@ -16,7 +16,7 @@ cppevent::server_socket::server_socket(const char* name,
                                        const char* service,
                                        event_loop& loop): m_loop(loop) {
     addrinfo* res;
-    get_addrinfo(name, service, &res);
+    get_addrinfo(name, service, &res, true);
 
     m_fd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     throw_if_error(m_fd, "server_socket failed to create socket: ");
