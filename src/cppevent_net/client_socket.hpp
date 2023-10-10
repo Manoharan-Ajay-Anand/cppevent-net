@@ -23,7 +23,13 @@ public:
     client_socket(const std::string& name, const std::string& service, event_loop& loop);
     ~client_socket();
 
-    awaitable_task<std::unique_ptr<socket>> connect();
+    client_socket(const client_socket&) = delete;
+    client_socket& operator=(const client_socket&) = delete;
+
+    client_socket(client_socket&&) = delete;
+    client_socket& operator=(client_socket&&) = delete;
+
+    awaitable_task<std::unique_ptr<socket>> connect() const;
 };
 
 }

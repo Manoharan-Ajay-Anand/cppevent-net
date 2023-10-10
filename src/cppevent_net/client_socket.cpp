@@ -30,7 +30,7 @@ cppevent::client_socket::~client_socket() {
     ::freeaddrinfo(m_res);
 }
 
-cppevent::awaitable_task<std::unique_ptr<cppevent::socket>> cppevent::client_socket::connect() {
+cppevent::awaitable_task<std::unique_ptr<cppevent::socket>> cppevent::client_socket::connect() const {
     int fd = ::socket(m_res->ai_family, m_res->ai_socktype, m_res->ai_protocol);
     throw_if_error(fd, "client_socket failed to create socket: ");
     
