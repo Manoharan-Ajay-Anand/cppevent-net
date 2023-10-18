@@ -1,4 +1,6 @@
-add_library(cppevent-net STATIC
+cmake_minimum_required(VERSION 3.5)
+
+add_library(cppevent_net
     src/cppevent_net/socket.cpp
     src/cppevent_net/client_socket.cpp
     src/cppevent_net/server_socket.cpp
@@ -6,6 +8,6 @@ add_library(cppevent-net STATIC
     src/cppevent_net/util.cpp
 )
 
-target_include_directories(cppevent-net PUBLIC src)
+target_include_directories(cppevent_net PUBLIC src)
 
-target_link_libraries(cppevent-net PUBLIC cppevent-base)
+target_link_libraries(cppevent_net PUBLIC cppevent_base)
